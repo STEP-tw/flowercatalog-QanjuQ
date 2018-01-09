@@ -44,17 +44,24 @@ const contentTypes = {
   'jpg':'image/jpg',
   'png':'image/png',
   'svg':'image/svg',
-  'ico':'image/x-icon'
+  'ico':'image/x-icon',
+  'gif':'image/gif'
 };
 
 const filepaths = {
   'html':'',
+  'gif':'/images',
   'ico':'/images',
   'css':'/styles',
   'js':'/scripts',
   'jpg':'/images',
   'png':'/images',
   'svg':'/images'
+};
+
+const isImage = function(filepath){
+  let fileExtn = getFileExtension(filepath);
+  return ['jpg','png','ico','svg','gif'].includes(fileExtn);
 };
 
 const getContentType = (req)=>{
@@ -68,8 +75,8 @@ const getFilePath = function(req){
 }
 
 const respondWithFile = function(req,res){
-  console.log(req.filepath);
-  fs.readFile(req.filepath, (err, data) => {
+  // console.log(req.filepath);
+  let respondAfterReading = (err, data) => {
     if (err) {
       res.statusCode = 404;
       res.end("file not found");
@@ -77,10 +84,17 @@ const respondWithFile = function(req,res){
     }
     res.statusCode = 200;
     res.setHeader('ContentType',req.contentType);
-    res.write(data.toString());
+    res.write(data);
     res.end();
-  });
-}
+  };
+  if(isImage(req.url)){
+    console.log("image");
+    fs.readFile(req.filepath,respondAfterReading);
+    return;
+  }
+  console.log("text");
+  fs.readFile(req.filepath,'utf8',respondAfterReading);
+};
 
 
 let app = WebApp.create();
@@ -100,6 +114,7 @@ app.get('/login',(req,res)=>{
   res.write('<form method="POST"> <input name="userName"><input name="place"> <input type="submit"></form>');
   res.end();
 });
+
 app.post('/login',(req,res)=>{
   let user = registered_users.find(u=>u.userName==req.body.userName);
   if(!user) {
@@ -112,11 +127,7 @@ app.post('/login',(req,res)=>{
   user.sessionid = sessionid;
   res.redirect('/home');
 });
-app.get('/home',(req,res)=>{
-  res.setHeader('Content-type','text/html');
-  res.write(`<p>Hello ${req.user.name}</p>`);
-  res.end();
-});
+
 app.get('/logout',(req,res)=>{
   res.setHeader('Set-Cookie',[`loginFailed=false,Expires=${new Date(1).toUTCString()}`,`sessionid=0,Expires=${new Date(1).toUTCString()}`]);
   delete req.user.sessionid;

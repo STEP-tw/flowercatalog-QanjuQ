@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel = "stylesheet" href = "style.css">
+    <script type = "text/javascript">
+      let hide = function(){
+        let jar = document.getElementById('image');
+        jar.style.visibility = "hidden";
+        setTimeout(function(){
+          jar.style.visibility = "visible";
+        },1000);
+      };
+    </script>
+    </head>
+  <body>
+    <h1 id = "title">Flower Catalog Website</h1>
+    <hr/>
+    <h1 id = "heading"> Flower Catalog</h1>
+    <hr/>
+    <div>
+    <div class = "left"> <img src = "/freshorigins.jpg"></div>
+    <div class = "right">
+      <ul>
+        <li><a href="/Abeliophyllum.html">Abeliophyllum</a></li>
+        <li><a href ="/agerantum.html">Ageratum</a></li>
+    </ul>
+    <img id = "image" src = "/animatedFlower.gif" onclick = "hide()"><br/>
+    <a href ="/guestBook.html">GuestBook</a></div>
+  </div>
+  </body>
+</html>
