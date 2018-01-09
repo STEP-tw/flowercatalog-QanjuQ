@@ -26,7 +26,7 @@ const loadUser = (req,res)=>{
 };
 
 const redirectLoggedInUserToHome = (req,res)=>{
-  if(req.urlIsOneOf(['/','/login']) && req.user) res.redirect('/home');
+  if(req.urlIsOneOf(['/','/login']) && req.user) res.redirect('/login');
 }
 
 const redirectLoggedOutUserToLogin = (req,res)=>{
@@ -59,6 +59,33 @@ const filepaths = {
   'svg':'/images'
 };
 
+let commentsCallBack = (err,data)=>{
+  if(err){
+    fs.openSync('./public/data/comments.json','w+');
+  }
+  comments = JSON.parse(data);
+};
+
+let toHtml = function(comment){
+  let fields = Object.keys(comment);
+  let parsed = "";
+  fields.forEach((field)=>{
+    parsed += "<td>" + comment[field] + "<td>";
+  });
+  parsed += "</tr>";
+  return parsed;
+};
+
+let comments = fs.readFile('./public/data/comments.json',commentsCallBack);
+
+const parseComments = function(){
+  let parsedComments = "";
+  comments.forEach(comment=>{
+    parsedComments += toHtml(comment);
+  });
+  return parsedComments;
+};
+
 const isImage = function(filepath){
   let fileExtn = getFileExtension(filepath);
   return ['jpg','png','ico','svg','gif'].includes(fileExtn);
@@ -88,11 +115,9 @@ const respondWithFile = function(req,res){
     res.end();
   };
   if(isImage(req.url)){
-    console.log("image");
     fs.readFile(req.filepath,respondAfterReading);
     return;
   }
-  console.log("text");
   fs.readFile(req.filepath,'utf8',respondAfterReading);
 };
 
@@ -133,6 +158,14 @@ app.get('/logout',(req,res)=>{
   delete req.user.sessionid;
   res.redirect('/login');
 });
+
+app.get('/comments',(req,res)=>{
+  let content = parseComments();
+  res.statusCode = 200;
+  res.setHeader('Content-type',"text/html");
+  res.write(content);
+  res.end();
+})
 
 const PORT = 5000;
 let server = http.createServer(app);
