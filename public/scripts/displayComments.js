@@ -12,4 +12,5 @@ const getComments = function(){
   xml.send();
 };
 
+
 window.onload = getComments;

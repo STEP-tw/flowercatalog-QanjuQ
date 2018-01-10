@@ -2,19 +2,19 @@ let fs = require('fs');
 const timeStamp = require('./time.js').timeStamp;
 const http = require('http');
 const WebApp = require('./webapp');
-let registered_users = [{userName:'bhanutv',name:'Bhanu Teja Verma'},{userName:'harshab',name:'Harsha Vardhana'}];
+let registered_users = [{userName:'anju',password:"hello"}];
+let loggedin_users = [{userName:'anju',password:"hello"}];
 const toS = o=>JSON.stringify(o,null,2);
 
 const logRequest = (req,res)=>{
-  let text = ['------------------------------',
+  let text = [`${req.method} ${req.url}`,
+    '<<<<==============================>>>>',
     `${timeStamp()}`,
     `${req.method} ${req.url}`,
     `HEADERS=> ${toS(req.headers)}`,
     `COOKIES=> ${toS(req.cookies)}`,
-    `BODY=> ${toS(req.body)}`,''].join('\n');
+    `BODY=> ${toS(req.body)}`,'',''].join('\n');
   fs.appendFile('request.log',text,()=>{});
-
-  console.log(`${req.method} ${req.url}`);
 }
 
 const loadUser = (req,res)=>{
@@ -25,12 +25,13 @@ const loadUser = (req,res)=>{
   }
 };
 
-const redirectLoggedInUserToHome = (req,res)=>{
-  if(req.urlIsOneOf(['/','/login']) && req.user) res.redirect('/login');
-}
-
-const redirectLoggedOutUserToLogin = (req,res)=>{
-  if(req.urlIsOneOf(['/','/home','/logout']) && !req.user) res.redirect('/login');
+const addComment = function(comment){
+  comment.date = timeStamp();
+  comments.push(comment);
+  let content = toS(comments)
+  fs.writeFile('./public/data/comments.json',content,(err)=>{
+    if(err) throw err;
+  });
 }
 
 const getFileExtension = function(url){
@@ -102,8 +103,7 @@ const getFilePath = function(req){
 }
 
 const respondWithFile = function(req,res){
-  // console.log(req.filepath);
-  let respondAfterReading = (err, data) => {
+  let actionAfterReading = (err, data) => {
     if (err) {
       res.statusCode = 404;
       res.end("file not found");
@@ -115,18 +115,16 @@ const respondWithFile = function(req,res){
     res.end();
   };
   if(isImage(req.url)){
-    fs.readFile(req.filepath,respondAfterReading);
+    fs.readFile(req.filepath,actionAfterReading);
     return;
   }
-  fs.readFile(req.filepath,'utf8',respondAfterReading);
+  fs.readFile(req.filepath,'utf8',actionAfterReading);
 };
 
 
 let app = WebApp.create();
 app.use(logRequest,'_preprocess');
 app.use(loadUser,'_preprocess');
-app.use(redirectLoggedInUserToHome,'_preprocess');
-app.use(redirectLoggedOutUserToLogin,'_preprocess');
 
 app.use(getFilePath,'_postprocess');
 app.use(getContentType,'_postprocess');
@@ -135,27 +133,46 @@ app.use(respondWithFile,'_postprocess');
 
 app.get('/login',(req,res)=>{
   res.setHeader('Content-type','text/html');
-  if(req.cookies.logInFailed) res.write('<p>logIn Failed</p>');
-  res.write('<form method="POST"> <input name="userName"><input name="place"> <input type="submit"></form>');
+  if(!req.cookies.loggedin) res.write('<p>logIn Failed</p>');
+  res.write(`<form method="POST"/>
+  <input name="userName"/>
+  <input type = "password" name="password">
+  <input type="submit"> <a href ="/guestBook.html"><input type = 'button' value="comment"/></a>
+   </form>`);
   res.end();
 });
 
 app.post('/login',(req,res)=>{
-  let user = registered_users.find(u=>u.userName==req.body.userName);
-  if(!user) {
-    res.setHeader('Set-Cookie',`logInFailed=true`);
+  let sessionid = new Date().getTime();
+  // if(!user){
+  //   res.setHeader('Set-Cookie','loggedIn=true');
+  //   res.redirect('/login');
+  //   res.end();
+  // }
+  res.setHeader('Set-Cookie',[`loggedin=true`,`sessionid=${sessionid}`]);
+  loggedin_users.push(req.body);
+  let user = loggedin_users.find(u=>u.userName==req.body.userName);
+  user.sessionid = sessionid;
+  user.loggedIn = true;
+  res.redirect('/login');
+});
+
+app.post('/guestBook.html',(req,res)=>{
+  let user = loggedin_users.find(u=>u.userName==req.body.name);
+  let isLoggedIn = req.cookies.loggedin;
+  addComment(req.body);
+  if(!user){
     res.redirect('/login');
     return;
   }
-  let sessionid = new Date().getTime();
-  res.setHeader('Set-Cookie',`sessionid=${sessionid}`);
-  user.sessionid = sessionid;
-  res.redirect('/home');
-});
+  res.redirect('/guestBook.html');
+})
+
 
 app.get('/logout',(req,res)=>{
-  res.setHeader('Set-Cookie',[`loginFailed=false,Expires=${new Date(1).toUTCString()}`,`sessionid=0,Expires=${new Date(1).toUTCString()}`]);
+  res.setHeader('Set-Cookie',[`loggedin=false,Expires=${new Date(1).toUTCString()}`,`sessionid=0,Expires=${new Date(1).toUTCString()}`]);
   delete req.user.sessionid;
+  delete req.user.loggedIn;
   res.redirect('/login');
 });
 
